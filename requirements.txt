@@ -1,0 +1,12 @@
+# Core dependencies
+pyzmq>=22.0.0
+msgpack>=1.0.0
+
+# Serial communication (for Robotiq)
+pyserial>=3.5
+minimalmodbus>=2.0.0
+
+# Development dependencies (optional)
+# pytest
+# black
+# flake8
