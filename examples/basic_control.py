@@ -55,39 +55,39 @@ def main(server_ip: str):
     
     time.sleep(1.0)
     
-    # === Close Gripper ===
-    print("\n[3] Closing gripper...")
-    position, obj_detected = client.close(speed=200, force=150)
-    print(f"    Position: {position}, Object detected: {obj_detected}")
+    # # === Close Gripper ===
+    # print("\n[3] Closing gripper...")
+    # position, obj_detected = client.close(speed=200, force=150)
+    # print(f"    Position: {position}, Object detected: {obj_detected}")
     
-    time.sleep(1.0)
+    # time.sleep(1.0)
     
-    # === Move to specific position ===
-    print("\n[4] Moving to position 128 (half-closed)...")
-    position, obj_detected = client.move(position=128, speed=200, force=100)
-    print(f"    Position: {position}, Object detected: {obj_detected}")
+    # # === Move to specific position ===
+    # print("\n[4] Moving to position 128 (half-closed)...")
+    # position, obj_detected = client.move(position=128, speed=200, force=100)
+    # print(f"    Position: {position}, Object detected: {obj_detected}")
     
-    time.sleep(1.0)
+    # time.sleep(1.0)
     
-    # === Grasp demonstration ===
-    print("\n[5] Grasp demonstration...")
-    print("    Place an object between the gripper fingers.")
-    input("    Press Enter when ready...")
+    # # === Grasp demonstration ===
+    # print("\n[5] Grasp demonstration...")
+    # print("    Place an object between the gripper fingers.")
+    # input("    Press Enter when ready...")
     
-    print("    Attempting to grasp...")
-    grasped = client.grasp(speed=100, force=200)
+    # print("    Attempting to grasp...")
+    # grasped = client.grasp(speed=100, force=200)
     
-    if grasped:
-        print("    Object grasped successfully!")
-        client.print_status()
+    # if grasped:
+    #     print("    Object grasped successfully!")
+    #     client.print_status()
         
-        print("\n    Releasing in 3 seconds...")
-        time.sleep(3.0)
+    #     print("\n    Releasing in 3 seconds...")
+    #     time.sleep(3.0)
         
-        client.release()
-        print("    Object released.")
-    else:
-        print("    No object detected.")
+    #     client.release()
+    #     print("    Object released.")
+    # else:
+    #     print("    No object detected.")
     
     # === Final status ===
     print("\n[6] Final status:")

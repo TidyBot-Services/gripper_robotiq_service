@@ -42,6 +42,10 @@ from gripper_server.protocol import (
 )
 from gripper_server.grippers import get_gripper, BaseGripper
 
+# Force unbuffered print output for immediate log visibility
+import functools
+print = functools.partial(print, flush=True)
+
 
 def kill_port_users(port: int) -> None:
     """Kill any process using the specified port."""
