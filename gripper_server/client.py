@@ -23,6 +23,7 @@ Example:
     client.disconnect()
 """
 
+import logging
 import time
 from typing import Optional, Tuple, Dict, Any
 
@@ -49,6 +50,9 @@ from gripper_server.protocol import (
     DEFAULT_CMD_PORT,
     DEFAULT_STATE_PORT,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class GripperClient:
@@ -185,7 +189,7 @@ class GripperClient:
         self._state_socket.connect(f"tcp://{self.server_ip}:{self.state_port}")
         
         self._connected = True
-        print(f"[GripperClient] Connected to {self.server_ip}")
+        logger.info("Connected to %s", self.server_ip)
         
         # Get initial state
         self.update_state()
@@ -204,7 +208,7 @@ class GripperClient:
         self._zmq_context = None
         self._connected = False
         
-        print("[GripperClient] Disconnected")
+        logger.info("Disconnected")
     
     def update_state(self) -> bool:
         """Update cached state from server.
@@ -255,13 +259,13 @@ class GripperClient:
         Returns:
             bool: True if activation successful
         """
-        print("[GripperClient] Activating...")
+        logger.info("Activating...")
         response = self._send_command(ActivateCmd(reset_first=reset_first))
         
         if response.success:
-            print("[GripperClient] Activation complete")
+            logger.info("Activation complete")
         else:
-            print(f"[GripperClient] Activation failed: {response.message}")
+            logger.error("Activation failed: %s", response.message)
         
         self.update_state()
         return response.success
@@ -272,7 +276,7 @@ class GripperClient:
         Returns:
             bool: True if reset successful
         """
-        print("[GripperClient] Resetting...")
+        logger.info("Resetting...")
         response = self._send_command(ResetCmd())
         self.update_state()
         return response.success
@@ -315,7 +319,7 @@ class GripperClient:
         Returns:
             Tuple[int, bool]: (final_position, object_detected)
         """
-        print("[GripperClient] Opening...")
+        logger.info("Opening...")
         response = self._send_command(OpenCmd(speed=speed, force=force))
         self.update_state()
         
@@ -333,7 +337,7 @@ class GripperClient:
         Returns:
             Tuple[int, bool]: (final_position, object_detected)
         """
-        print("[GripperClient] Closing...")
+        logger.info("Closing...")
         response = self._send_command(CloseCmd(speed=speed, force=force))
         self.update_state()
         
@@ -347,7 +351,7 @@ class GripperClient:
         Returns:
             bool: True if stop successful
         """
-        print("[GripperClient] Stopping...")
+        logger.info("Stopping...")
         response = self._send_command(StopCmd())
         return response.success
     
@@ -363,16 +367,16 @@ class GripperClient:
         Returns:
             bool: True if calibration successful
         """
-        print(f"[GripperClient] Calibrating (open={open_mm}mm, close={close_mm}mm)...")
+        logger.info("Calibrating (open=%smm, close=%smm)...", open_mm, close_mm)
         response = self._send_command(CalibrateCmd(
             open_mm=open_mm,
             close_mm=close_mm
         ))
         
         if response.success:
-            print("[GripperClient] Calibration complete")
+            logger.info("Calibration complete")
         else:
-            print(f"[GripperClient] Calibration failed: {response.message}")
+            logger.error("Calibration failed: %s", response.message)
         
         self.update_state()
         return response.success
@@ -457,22 +461,27 @@ class GripperClient:
         self.update_state()
         
         if not self.latest_state:
-            print("[GripperClient] No state available")
+            logger.info("No state available")
             return
-        
+
         state = self.latest_state
-        print("\n=== Gripper Status ===")
-        print(f"Connected: {self._connected}")
-        print(f"Activated: {state.is_activated}")
-        print(f"Position: {state.position}/255")
+        info_lines = [
+            "=== Gripper Status ===",
+            "Connected: %s" % self._connected,
+            "Activated: %s" % state.is_activated,
+            "Position: %s/255" % state.position,
+        ]
         if state.is_calibrated:
-            print(f"Position (mm): {state.position_mm:.2f}")
-        print(f"Current: {state.current_ma:.0f} mA")
-        print(f"Object detected: {state.object_detected}")
-        print(f"Moving: {state.is_moving}")
-        print(f"Calibrated: {state.is_calibrated}")
-        print(f"Fault: {state.fault_message}")
-        print("=====================\n")
+            info_lines.append("Position (mm): %.2f" % state.position_mm)
+        info_lines.extend([
+            "Current: %.0f mA" % state.current_ma,
+            "Object detected: %s" % state.object_detected,
+            "Moving: %s" % state.is_moving,
+            "Calibrated: %s" % state.is_calibrated,
+            "Fault: %s" % state.fault_message,
+            "=====================",
+        ])
+        logger.info("\n".join(info_lines))
     
     def __enter__(self):
         """Context manager entry."""

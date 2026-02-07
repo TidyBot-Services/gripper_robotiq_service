@@ -1,19 +1,13 @@
-Metadata-Version: 2.4
-Name: gripper_server
+Metadata-Version: 2.1
+Name: gripper-server
 Version: 0.1.0
 Summary: Modular gripper control server for lab environments
+Home-page: UNKNOWN
 Author: Lab Robotics Team
+License: UNKNOWN
+Platform: UNKNOWN
 Requires-Python: >=3.8
-Requires-Dist: pyzmq>=22.0.0
-Requires-Dist: msgpack>=1.0.0
-Requires-Dist: pyserial>=3.5
-Requires-Dist: minimalmodbus>=2.0.0
 Provides-Extra: dev
-Requires-Dist: pytest; extra == "dev"
-Requires-Dist: black; extra == "dev"
-Requires-Dist: flake8; extra == "dev"
-Dynamic: author
-Dynamic: provides-extra
-Dynamic: requires-dist
-Dynamic: requires-python
-Dynamic: summary
+
+UNKNOWN
+

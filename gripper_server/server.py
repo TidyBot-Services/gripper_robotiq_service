@@ -6,6 +6,7 @@ and exposes a ZMQ interface for remote control.
 """
 
 import argparse
+import logging
 import os
 import signal
 import subprocess
@@ -13,6 +14,12 @@ import sys
 import time
 import threading
 from typing import Optional
+
+# Project-level logging setup
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from logging_config import setup_logging
 
 try:
     import zmq
@@ -42,9 +49,7 @@ from gripper_server.protocol import (
 )
 from gripper_server.grippers import get_gripper, BaseGripper
 
-# Force unbuffered print output for immediate log visibility
-import functools
-print = functools.partial(print, flush=True)
+logger = logging.getLogger(__name__)
 
 
 def kill_port_users(port: int) -> None:
@@ -56,7 +61,7 @@ def kill_port_users(port: int) -> None:
             timeout=5
         )
         if result.returncode == 0:
-            print(f"[GripperServer] Killed process using port {port}")
+            logger.info("Killed process using port %s", port)
             time.sleep(0.5)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         try:
@@ -71,7 +76,7 @@ def kill_port_users(port: int) -> None:
                 for pid in pids:
                     try:
                         os.kill(int(pid), signal.SIGKILL)
-                        print(f"[GripperServer] Killed PID {pid} using port {port}")
+                        logger.info("Killed PID %s using port %s", pid, port)
                     except (ProcessLookupError, ValueError):
                         pass
                 time.sleep(0.5)
@@ -127,18 +132,18 @@ class GripperServer:
     def _init_gripper(self) -> bool:
         """Initialize the gripper hardware."""
         try:
-            print(f"[GripperServer] Initializing {self.gripper_type} gripper...")
+            logger.info("Initializing %s gripper...", self.gripper_type)
             self.gripper = get_gripper(self.gripper_type, **self.gripper_kwargs)
             
             if not self.gripper.connect():
-                print("[GripperServer] Failed to connect to gripper")
+                logger.error("Failed to connect to gripper")
                 return False
             
-            print("[GripperServer] Gripper connected successfully")
+            logger.info("Gripper connected successfully")
             return True
             
         except Exception as e:
-            print(f"[GripperServer] Gripper initialization failed: {e}")
+            logger.error("Gripper initialization failed: %s", e)
             return False
     
     def _init_zmq(self) -> None:
@@ -159,9 +164,8 @@ class GripperServer:
         self._state_socket.setsockopt(zmq.LINGER, 0)
         self._state_socket.bind(f"tcp://*:{self.state_port}")
         
-        print(f"[GripperServer] ZMQ sockets initialized:")
-        print(f"  - Command: tcp://*:{self.cmd_port}")
-        print(f"  - State: tcp://*:{self.state_port}")
+        logger.info("ZMQ sockets initialized: Command=tcp://*:%s, State=tcp://*:%s",
+                    self.cmd_port, self.state_port)
     
     def _cleanup_zmq(self) -> None:
         """Cleanup ZMQ resources."""
@@ -210,7 +214,7 @@ class GripperServer:
             cmd = unpack_command(data)
             
             if isinstance(cmd, ActivateCmd):
-                print(f"[GripperServer] Activating (reset_first={cmd.reset_first})")
+                logger.info("Activating (reset_first=%s)", cmd.reset_first)
                 success = self.gripper.activate(reset_first=cmd.reset_first)
                 return Response(
                     success=success,
@@ -218,7 +222,7 @@ class GripperServer:
                 ).pack()
             
             elif isinstance(cmd, ResetCmd):
-                print("[GripperServer] Resetting")
+                logger.info("Resetting")
                 success = self.gripper.reset()
                 return Response(
                     success=success,
@@ -226,7 +230,7 @@ class GripperServer:
                 ).pack()
             
             elif isinstance(cmd, MoveCmd):
-                print(f"[GripperServer] Moving to position={cmd.position}, speed={cmd.speed}, force={cmd.force}")
+                logger.info("Moving to position=%s, speed=%s, force=%s", cmd.position, cmd.speed, cmd.force)
                 final_pos, obj_detected = self.gripper.move(cmd.position, cmd.speed, cmd.force)
                 return Response(
                     success=True,
@@ -235,7 +239,7 @@ class GripperServer:
                 ).pack()
             
             elif isinstance(cmd, OpenCmd):
-                print(f"[GripperServer] Opening (speed={cmd.speed}, force={cmd.force})")
+                logger.info("Opening (speed=%s, force=%s)", cmd.speed, cmd.force)
                 final_pos, obj_detected = self.gripper.open(cmd.speed, cmd.force)
                 return Response(
                     success=True,
@@ -244,7 +248,7 @@ class GripperServer:
                 ).pack()
             
             elif isinstance(cmd, CloseCmd):
-                print(f"[GripperServer] Closing (speed={cmd.speed}, force={cmd.force})")
+                logger.info("Closing (speed=%s, force=%s)", cmd.speed, cmd.force)
                 final_pos, obj_detected = self.gripper.close(cmd.speed, cmd.force)
                 return Response(
                     success=True,
@@ -253,7 +257,7 @@ class GripperServer:
                 ).pack()
             
             elif isinstance(cmd, StopCmd):
-                print("[GripperServer] Stopping")
+                logger.info("Stopping")
                 success = self.gripper.stop()
                 return Response(
                     success=success,
@@ -261,7 +265,7 @@ class GripperServer:
                 ).pack()
             
             elif isinstance(cmd, CalibrateCmd):
-                print(f"[GripperServer] Calibrating (open={cmd.open_mm}mm, close={cmd.close_mm}mm)")
+                logger.info("Calibrating (open=%smm, close=%smm)", cmd.open_mm, cmd.close_mm)
                 success = self.gripper.calibrate(cmd.open_mm, cmd.close_mm)
                 return Response(
                     success=success,
@@ -275,12 +279,12 @@ class GripperServer:
                 ).pack()
                 
         except Exception as e:
-            print(f"[GripperServer] Error handling command: {e}")
+            logger.error("Error handling command: %s", e)
             return Response(success=False, message=str(e)).pack()
     
     def _command_loop(self) -> None:
         """Main command processing loop."""
-        print("[GripperServer] Command loop started")
+        logger.info("Command loop started")
         
         while self._running:
             try:
@@ -291,16 +295,16 @@ class GripperServer:
                     self._cmd_socket.send(response)
             except zmq.ZMQError as e:
                 if self._running:
-                    print(f"[GripperServer] ZMQ error: {e}")
+                    logger.error("ZMQ error: %s", e)
             except Exception as e:
                 if self._running:
-                    print(f"[GripperServer] Command error: {e}")
+                    logger.error("Command error: %s", e)
         
-        print("[GripperServer] Command loop stopped")
+        logger.info("Command loop stopped")
     
     def _state_publish_loop(self) -> None:
         """State publishing loop."""
-        print(f"[GripperServer] State publishing at {self.state_publish_rate} Hz")
+        logger.info("State publishing at %s Hz", self.state_publish_rate)
         
         interval = 1.0 / self.state_publish_rate
         
@@ -311,10 +315,10 @@ class GripperServer:
                 time.sleep(interval)
             except Exception as e:
                 if self._running:
-                    print(f"[GripperServer] State publish error: {e}")
+                    logger.error("State publish error: %s", e)
                 time.sleep(0.1)
         
-        print("[GripperServer] State publishing stopped")
+        logger.info("State publishing stopped")
     
     def start(self) -> bool:
         """Start the gripper server.
@@ -339,12 +343,12 @@ class GripperServer:
         self._state_thread = threading.Thread(target=self._state_publish_loop, daemon=True)
         self._state_thread.start()
         
-        print("[GripperServer] Server started")
+        logger.info("Server started")
         return True
     
     def stop(self) -> None:
         """Stop the gripper server."""
-        print("[GripperServer] Stopping...")
+        logger.info("Stopping...")
         
         self._running = False
         
@@ -361,27 +365,29 @@ class GripperServer:
         if self.gripper:
             self.gripper.disconnect()
         
-        print("[GripperServer] Server stopped")
+        logger.info("Server stopped")
     
     def run(self) -> None:
         """Run the server (blocking)."""
         if not self.start():
-            print("[GripperServer] Failed to start server")
+            logger.error("Failed to start server")
             return
         
-        print("\n[GripperServer] Press Ctrl+C to stop\n")
+        logger.info("Press Ctrl+C to stop")
         
         try:
             while self._running:
                 time.sleep(0.1)
         except KeyboardInterrupt:
-            print("\n[GripperServer] Interrupted")
+            logger.info("Interrupted")
         
         self.stop()
 
 
 def main():
     """Main entry point for gripper server."""
+    setup_logging("gripper_server")
+
     parser = argparse.ArgumentParser(description="Gripper Server")
     
     parser.add_argument(
@@ -441,7 +447,7 @@ def main():
     
     # Handle signals
     def signal_handler(sig, frame):
-        print("\n[GripperServer] Signal received, stopping...")
+        logger.info("Signal received, stopping...")
         server.stop()
         sys.exit(0)
     

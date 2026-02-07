@@ -1,2 +1,3 @@
 [console_scripts]
 gripper-server = gripper_server.server:main
+

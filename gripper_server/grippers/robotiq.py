@@ -7,6 +7,7 @@ over USB/RS485 connection.
 Based on the pyRobotiqGripper library by Benoit CASTETS.
 """
 
+import logging
 import time
 from typing import Tuple, Optional
 
@@ -21,6 +22,8 @@ except ImportError:
     )
 
 from gripper_server.grippers.base import BaseGripper, GripperState
+
+logger = logging.getLogger(__name__)
 
 # Serial communication constants
 BAUDRATE = 115200
@@ -85,7 +88,7 @@ class RobotiqGripper(BaseGripper):
             if self._port == "auto":
                 self._port = self._auto_detect_port()
                 if self._port is None:
-                    print("[RobotiqGripper] No gripper detected")
+                    logger.error("No gripper detected")
                     return False
             
             # Create serial connection
@@ -108,7 +111,7 @@ class RobotiqGripper(BaseGripper):
             )
             
             self._connected = True
-            print(f"[RobotiqGripper] Connected on {self._port}")
+            logger.info("Connected on %s", self._port)
             
             # Read initial state
             self.read_state()
@@ -116,7 +119,7 @@ class RobotiqGripper(BaseGripper):
             return True
             
         except Exception as e:
-            print(f"[RobotiqGripper] Connection failed: {e}")
+            logger.error("Connection failed: %s", e)
             self._connected = False
             return False
     
@@ -130,7 +133,7 @@ class RobotiqGripper(BaseGripper):
         self._serial = None
         self._instrument = None
         self._connected = False
-        print("[RobotiqGripper] Disconnected")
+        logger.info("Disconnected")
     
     def _auto_detect_port(self, verbose: bool = True) -> Optional[str]:
         """Auto-detect the serial port with a connected Robotiq gripper.
@@ -144,18 +147,18 @@ class RobotiqGripper(BaseGripper):
         ports = serial.tools.list_ports.comports()
         
         if verbose:
-            print(f"[RobotiqGripper] Scanning {len(ports)} serial ports...")
+            logger.info("Scanning %s serial ports...", len(ports))
             for p in ports:
-                print(f"  - {p.device}: {p.description}")
+                logger.info("  - %s: %s", p.device, p.description)
         
         if not ports:
             if verbose:
-                print("[RobotiqGripper] No serial ports found")
+                logger.warning("No serial ports found")
             return None
         
         for port in ports:
             if verbose:
-                print(f"[RobotiqGripper] Trying {port.device}...")
+                logger.info("Trying %s...", port.device)
             
             ser = None
             try:
@@ -185,15 +188,15 @@ class RobotiqGripper(BaseGripper):
                 ser.close()
                 
                 if pos_echo == 100:
-                    print(f"[RobotiqGripper] Found gripper on {port.device}")
+                    logger.info("Found gripper on %s", port.device)
                     return port.device
                 else:
                     if verbose:
-                        print(f"[RobotiqGripper] {port.device}: Response mismatch (got {pos_echo}, expected 100)")
+                        logger.info("%s: Response mismatch (got %s, expected 100)", port.device, pos_echo)
                     
             except Exception as e:
                 if verbose:
-                    print(f"[RobotiqGripper] {port.device}: {e}")
+                    logger.info("%s: %s", port.device, e)
                 if ser:
                     try:
                         ser.close()
@@ -263,7 +266,7 @@ class RobotiqGripper(BaseGripper):
                 self._state.position_mm = self._bit_to_mm(position)
             
         except Exception as e:
-            print(f"[RobotiqGripper] Error reading state: {e}")
+            logger.error("Error reading state: %s", e)
         
         return self._state
     
@@ -314,16 +317,16 @@ class RobotiqGripper(BaseGripper):
                 self.read_state()
                 
                 if self._state.is_activated:
-                    print(f"[RobotiqGripper] Activation completed in {time.time() - start_time:.2f}s")
+                    logger.info("Activation completed in %.2fs", time.time() - start_time)
                     return True
                 
                 time.sleep(0.1)
             
-            print("[RobotiqGripper] Activation timed out")
+            logger.warning("Activation timed out")
             return False
             
         except Exception as e:
-            print(f"[RobotiqGripper] Activation failed: {e}")
+            logger.error("Activation failed: %s", e)
             return False
     
     def reset(self) -> bool:
@@ -338,10 +341,10 @@ class RobotiqGripper(BaseGripper):
         try:
             self._write_registers(1000, [0, 0, 0])
             self._state.is_activated = False
-            print("[RobotiqGripper] Reset")
+            logger.info("Reset")
             return True
         except Exception as e:
-            print(f"[RobotiqGripper] Reset failed: {e}")
+            logger.error("Reset failed: %s", e)
             return False
     
     def move(self, position: int, speed: int = 255, force: int = 255) -> Tuple[int, bool]:
@@ -393,11 +396,11 @@ class RobotiqGripper(BaseGripper):
                 
                 time.sleep(0.05)
             
-            print("[RobotiqGripper] Move timed out")
+            logger.warning("Move timed out")
             return self._state.position, False
             
         except Exception as e:
-            print(f"[RobotiqGripper] Move failed: {e}")
+            logger.error("Move failed: %s", e)
             return self._state.position, False
     
     def _get_object_status(self) -> int:
@@ -452,7 +455,7 @@ class RobotiqGripper(BaseGripper):
             self.move(self._state.position, speed=0, force=0)
             return True
         except Exception as e:
-            print(f"[RobotiqGripper] Stop failed: {e}")
+            logger.error("Stop failed: %s", e)
             return False
     
     def calibrate(self, open_mm: float, close_mm: float) -> bool:
@@ -491,19 +494,19 @@ class RobotiqGripper(BaseGripper):
             c_bit = self._close_bit
             
             if abs(c_bit - o_bit) < 1:
-                print("[RobotiqGripper] Calibration failed - no movement detected")
+                logger.error("Calibration failed - no movement detected")
                 return False
             
             self._a_coef = (close_mm - open_mm) / (c_bit - o_bit)
             self._b_coef = (open_mm * c_bit - o_bit * close_mm) / (c_bit - o_bit)
             
             self._state.is_calibrated = True
-            print(f"[RobotiqGripper] Calibrated: open={o_bit}, close={c_bit}")
+            logger.info("Calibrated: open=%s, close=%s", o_bit, c_bit)
             
             return True
             
         except Exception as e:
-            print(f"[RobotiqGripper] Calibration failed: {e}")
+            logger.error("Calibration failed: %s", e)
             return False
     
     def _mm_to_bit(self, mm: float) -> int:
@@ -536,7 +539,7 @@ class RobotiqGripper(BaseGripper):
             raise RuntimeError("Gripper must be calibrated for mm positioning")
         
         if position_mm > self._state.open_mm:
-            print(f"[RobotiqGripper] Warning: requested {position_mm}mm exceeds max {self._state.open_mm}mm")
+            logger.warning("Requested %smm exceeds max %smm", position_mm, self._state.open_mm)
             position_mm = self._state.open_mm
         
         position = self._mm_to_bit(position_mm)
@@ -557,16 +560,19 @@ class RobotiqGripper(BaseGripper):
     def print_info(self) -> None:
         """Print gripper status information."""
         self.read_state()
-        print("\n=== Robotiq Gripper Status ===")
-        print(f"Port: {self._port}")
-        print(f"Connected: {self._connected}")
-        print(f"Activated: {self._state.is_activated}")
-        print(f"Position: {self._state.position}/255")
-        print(f"Current: {self._state.current * 10} mA")
-        print(f"Object detected: {self._state.object_detected}")
-        print(f"Moving: {self._state.is_moving}")
-        print(f"Calibrated: {self._state.is_calibrated}")
+        info_lines = [
+            "=== Robotiq Gripper Status ===",
+            "Port: %s" % self._port,
+            "Connected: %s" % self._connected,
+            "Activated: %s" % self._state.is_activated,
+            "Position: %s/255" % self._state.position,
+            "Current: %s mA" % (self._state.current * 10),
+            "Object detected: %s" % self._state.object_detected,
+            "Moving: %s" % self._state.is_moving,
+            "Calibrated: %s" % self._state.is_calibrated,
+        ]
         if self._state.is_calibrated:
-            print(f"Position (mm): {self.get_position_mm():.2f}")
-        print(f"Fault: {self._state.fault_message}")
-        print("==============================\n")
+            info_lines.append("Position (mm): %.2f" % self.get_position_mm())
+        info_lines.append("Fault: %s" % self._state.fault_message)
+        info_lines.append("==============================")
+        logger.info("\n".join(info_lines))
