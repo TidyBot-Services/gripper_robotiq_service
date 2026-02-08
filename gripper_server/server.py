@@ -157,14 +157,14 @@ class GripperServer:
         # Command socket (REQ/REP)
         self._cmd_socket = self._zmq_context.socket(zmq.REP)
         self._cmd_socket.setsockopt(zmq.LINGER, 0)
-        self._cmd_socket.bind(f"tcp://*:{self.cmd_port}")
+        self._cmd_socket.bind(f"tcp://127.0.0.1:{self.cmd_port}")
         
         # State socket (PUB)
         self._state_socket = self._zmq_context.socket(zmq.PUB)
         self._state_socket.setsockopt(zmq.LINGER, 0)
-        self._state_socket.bind(f"tcp://*:{self.state_port}")
+        self._state_socket.bind(f"tcp://127.0.0.1:{self.state_port}")
         
-        logger.info("ZMQ sockets initialized: Command=tcp://*:%s, State=tcp://*:%s",
+        logger.info("ZMQ sockets initialized: Command=tcp://127.0.0.1:%s, State=tcp://127.0.0.1:%s",
                     self.cmd_port, self.state_port)
     
     def _cleanup_zmq(self) -> None:
