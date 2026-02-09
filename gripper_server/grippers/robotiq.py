@@ -147,9 +147,9 @@ class RobotiqGripper(BaseGripper):
         ports = serial.tools.list_ports.comports()
         
         if verbose:
-            logger.info("Scanning %s serial ports...", len(ports))
+            logger.debug("Scanning %s serial ports...", len(ports))
             for p in ports:
-                logger.info("  - %s: %s", p.device, p.description)
+                logger.debug("  - %s: %s", p.device, p.description)
         
         if not ports:
             if verbose:
@@ -158,7 +158,7 @@ class RobotiqGripper(BaseGripper):
         
         for port in ports:
             if verbose:
-                logger.info("Trying %s...", port.device)
+                logger.debug("Trying %s...", port.device)
             
             ser = None
             try:
@@ -192,11 +192,11 @@ class RobotiqGripper(BaseGripper):
                     return port.device
                 else:
                     if verbose:
-                        logger.info("%s: Response mismatch (got %s, expected 100)", port.device, pos_echo)
+                        logger.debug("%s: Response mismatch (got %s, expected 100)", port.device, pos_echo)
                     
             except Exception as e:
                 if verbose:
-                    logger.info("%s: %s", port.device, e)
+                    logger.debug("%s: %s", port.device, e)
                 if ser:
                     try:
                         ser.close()
@@ -215,7 +215,7 @@ class RobotiqGripper(BaseGripper):
         """Read from gripper registers."""
         if not self._connected:
             raise RuntimeError("Gripper not connected")
-        return self._instrument.read_registers(address, count)
+        return self._instrument.read_registers(address, count, 4)
     
     def read_state(self) -> GripperState:
         """Read current state from gripper hardware.
