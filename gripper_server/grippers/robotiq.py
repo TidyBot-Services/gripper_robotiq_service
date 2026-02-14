@@ -8,6 +8,7 @@ Based on the pyRobotiqGripper library by Benoit CASTETS.
 """
 
 import logging
+import threading
 import time
 from typing import Tuple, Optional
 
@@ -67,10 +68,11 @@ class RobotiqGripper(BaseGripper):
         self._port = port
         self._slave_address = slave_address
         self._timeout = timeout
-        
+
         self._serial = None
         self._instrument = None
-        
+        self._io_lock = threading.Lock()
+
         # Calibration coefficients for mm conversion
         self._a_coef = None
         self._b_coef = None
@@ -209,13 +211,15 @@ class RobotiqGripper(BaseGripper):
         """Write to gripper registers."""
         if not self._connected:
             raise RuntimeError("Gripper not connected")
-        self._instrument.write_registers(address, values)
-    
+        with self._io_lock:
+            self._instrument.write_registers(address, values)
+
     def _read_registers(self, address: int, count: int) -> list:
         """Read from gripper registers."""
         if not self._connected:
             raise RuntimeError("Gripper not connected")
-        return self._instrument.read_registers(address, count, 4)
+        with self._io_lock:
+            return self._instrument.read_registers(address, count, 4)
     
     def read_state(self) -> GripperState:
         """Read current state from gripper hardware.

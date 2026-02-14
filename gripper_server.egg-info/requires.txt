@@ -1,9 +1,9 @@
-minimalmodbus>=2.0.0
+pyzmq>=22.0.0
 msgpack>=1.0.0
 pyserial>=3.5
-pyzmq>=22.0.0
+minimalmodbus>=2.0.0
 
 [dev]
+pytest
 black
 flake8
-pytest
