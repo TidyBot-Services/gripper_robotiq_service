@@ -1,3 +1,5 @@
+> **Hardware service** — runs directly on the robot computer. Not deployable via deploy-agent. Requires physical Robotiq 2F-85 gripper.
+
 # Gripper Server
 
 A modular gripper control framework for lab environments. Provides a server/client architecture for controlling various grippers through a unified interface.
