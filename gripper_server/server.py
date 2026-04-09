@@ -138,8 +138,13 @@ class GripperServer:
             if not self.gripper.connect():
                 logger.error("Failed to connect to gripper")
                 return False
-            
-            logger.info("Gripper connected successfully")
+
+            logger.info("Gripper connected, activating...")
+            if not self.gripper.activate():
+                logger.error("Failed to activate gripper")
+                return False
+
+            logger.info("Gripper connected and activated")
             return True
             
         except Exception as e:
